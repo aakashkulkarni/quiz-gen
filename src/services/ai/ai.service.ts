@@ -1,5 +1,5 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
+import { generateText, Output } from "ai";
 import { config } from "@/config/env";
 import type { Question, QuestionOption } from "@/types/quiz";
 import { OPTION_LABELS, generatedQuizSchema, type GeneratedQuiz } from "./schemas";
@@ -15,7 +15,7 @@ export type GenerateQuizResult = {
   usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
 };
 
-const DEFAULT_MODEL = "gpt-4o";
+const DEFAULT_MODEL = "gpt-5-nano";
 
 const SYSTEM_PROMPT = `You are a quiz generator. Create exactly 5 multiple-choice questions on the given topic.
 - Each question must have exactly 4 options labeled A, B, C, D (in order).
@@ -55,41 +55,35 @@ export class AIService {
     const apiKey = options.apiKey ?? config.openai.apiKey;
     const modelId = options.modelId ?? DEFAULT_MODEL;
     const openai = createOpenAI({ apiKey });
-    this.model = openai.responses(modelId);
+    this.model = openai(modelId);
     this.maxRetries = options.maxRetries ?? 2;
   }
 
   async generateQuiz(topic: string, additionalContext?: string): Promise<GenerateQuizResult> {
-    const { object, usage } = await generateObject({
+    const { output, usage } = await generateText({
       model: this.model,
-      schema: generatedQuizSchema,
-      schemaName: "GeneratedQuiz",
-      schemaDescription:
-        "A quiz with 5 multiple-choice questions, each with 4 options (A-D) and one correct answer.",
+      output: Output.object({
+        name: "GeneratedQuiz",
+        description:
+          "A quiz with 5 multiple-choice questions, each with 4 options (A-D) and one correct answer.",
+        schema: generatedQuizSchema,
+      }),
       system: SYSTEM_PROMPT,
       prompt: `Generate a quiz on this topic: ${topic}${additionalContext ? `\n\nAdditional context: ${additionalContext}` : ""}`,
       maxRetries: this.maxRetries,
+      tools: {
+        web_search: openai.tools.webSearch(),
+      }
     });
 
-    const questions = toQuestions(object as GeneratedQuiz);
-    const u = usage as
-      | {
-          promptTokens?: number;
-          completionTokens?: number;
-          inputTokens?: number;
-          outputTokens?: number;
-          totalTokens?: number;
-        }
-      | undefined;
+    const questions = toQuestions(output as GeneratedQuiz);
     return {
       questions,
-      usage: u
-        ? {
-            promptTokens: u.promptTokens ?? u.inputTokens,
-            completionTokens: u.completionTokens ?? u.outputTokens,
-            totalTokens: u.totalTokens,
-          }
-        : undefined,
+      usage: {
+        promptTokens: usage.inputTokens,
+        completionTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens,
+      },
     };
   }
 }
