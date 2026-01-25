@@ -2,6 +2,22 @@
 
 AI-powered quiz builder built with **Next.js 15** (App Router, React Server Components), **Drizzle**, **PostgreSQL**, **Vercel AI SDK**, and **shadcn/ui**.
 
+## Summary
+
+### System architecture and technical decisions
+
+- **Layered design** — API Route Handlers call `QuizService`, which orchestrates `AIService` (LLM) and Drizzle/PostgreSQL. Business logic lives in services; routes handle HTTP and validation.
+- **Next.js App Router** — RSC for `/quiz/[id]` and listing so quiz data is loaded on the server with no client fetch for the initial payload. Route Handlers power `/api/quiz/generate`, `/api/quiz/[id]/submit`, and related endpoints.
+- **Database** — Drizzle ORM with PostgreSQL. Normalized schema: `quizzes` → `quiz_questions` → `question_options`; `quiz_attempts` → `quiz_attempt_answers`. Cascade deletes and foreign keys keep referential integrity. `QuizService` uses transactions for submitting an attempt and its answers.
+- **Structured AI output** — Quiz generation uses **Zod** schemas and **Vercel AI SDK**’s `Output.object` so the model returns a strongly typed structure (5 questions, 4 options each, one correct per question). This avoids malformed JSON and reduces client‑side parsing.
+- **Minimal client JS** — Client components only where needed: generate form, take-quiz form, and results. The rest stays in RSC for smaller bundles and better first-load performance.
+
+### AI tools and reasoning
+
+- **Vercel AI SDK (`ai`)** — `generateText` with `Output.object` and a Zod schema (`generatedQuizSchema`) to get a deterministic shape from the model. Retries and a clear system prompt (e.g. “exactly 5 questions, 4 options A–D, one correct, concise explanations”) improve reliability.
+- **@ai-sdk/openai** — OpenAI as the LLM provider. The `webSearch` tool is available so the model can ground factual questions in current web data when useful.
+- **Zod** — Schemas enforce array lengths and `isCorrect` cardinality (exactly one per question). Invalid output is caught before persistence, so only valid quizzes reach the DB.
+
 ## Tech stack
 
 - **Next.js 15** — App Router, RSC, Route Handlers
@@ -9,7 +25,7 @@ AI-powered quiz builder built with **Next.js 15** (App Router, React Server Comp
 - **Drizzle ORM** + **PostgreSQL**
 - **Vercel AI SDK** + **@ai-sdk/openai** + **Zod** — structured quiz generation
 - **Tailwind CSS** — styling
-- **shadcn-style UI** — Radix, CVA, Lucide
+- **shadcn-style UI** — Radix, Lucide
 
 ## RSC and server optimizations
 
@@ -36,13 +52,6 @@ AI-powered quiz builder built with **Next.js 15** (App Router, React Server Comp
 
    ```bash
    bun run db:push
-   ```
-
-   Or generate and run migrations:
-
-   ```bash
-   bun run db:generate
-   bun run db:migrate
    ```
 
 4. **Run**
@@ -73,12 +82,13 @@ Ensure `DATABASE_URL` in `.env` matches the DB service (e.g. `postgresql://postg
 - `bun run build` — production build
 - `bun run start` — production server
 - `bun run db:push` — push schema to DB
-- `bun run db:generate` — generate migrations
-- `bun run db:migrate` — run migrations
 - `bun run db:studio` — Drizzle Studio
 
 ## API
 
-- `GET /api/health` — health check
+- `GET /api/health` — `{ status: "ok" }`
+- `GET /api/quizzes` — `{ quizzes: { id, topic, description?, createdAt }[] }`
 - `POST /api/quiz/generate` — `{ topic, description? }` → `{ quiz }`
-- `POST /api/quiz/[id]/submit` — `{ answers: Record<questionId, optionId[]> }` → `{ result }`
+- `POST /api/quiz/[id]/submit` — `{ answers: Record<questionId, optionId[]> }` → `{ result: { quizId, attemptId, score, totalQuestions, maxScore, questionResults, questions } }`
+- `GET /api/quiz/[id]/attempts` — `{ attempts: { id, completedAt, correctCount, totalQuestions }[] }`
+- `GET /api/quiz/[id]/attempts/[attemptId]` — `{ result }` (same shape as submit)
