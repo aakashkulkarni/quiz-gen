@@ -25,12 +25,6 @@
 - **Tailwind CSS** — styling
 - **shadcn-style UI** — Radix, Lucide
 
-## RSC and server optimizations
-
-- **Quiz data** is loaded in the **Server Component** for `/quiz/[id]` (no client fetch for initial data)
-- **Route Handlers** for `/api/health`, `/api/quiz/generate`, `/api/quiz/[id]/submit`
-- **Client components** only where needed: generate form, take-quiz form, and results
-
 ## Setup
 
 1. **Install dependencies**
@@ -73,20 +67,3 @@ docker compose up
 ```
 
 Ensure `DATABASE_URL` in `.env` matches the DB service (e.g. `postgresql://postgres:postgres@db:5432/quiz` when running in Docker).
-
-## Scripts
-
-- `bun run dev` — dev server
-- `bun run build` — production build
-- `bun run start` — production server
-- `bun run db:push` — push schema to DB
-- `bun run db:studio` — Drizzle Studio
-
-## API
-
-- `GET /api/health` — `{ status: "ok" }`
-- `GET /api/quizzes` — `{ quizzes: { id, topic, description?, createdAt }[] }`
-- `POST /api/quiz/generate` — `{ topic, description? }` → `{ quiz }`
-- `POST /api/quiz/[id]/submit` — `{ answers: Record<questionId, optionId[]> }` → `{ result: { quizId, attemptId, score, totalQuestions, maxScore, questionResults, questions } }`
-- `GET /api/quiz/[id]/attempts` — `{ attempts: { id, completedAt, correctCount, totalQuestions }[] }`
-- `GET /api/quiz/[id]/attempts/[attemptId]` — `{ result }` (same shape as submit)
