@@ -53,14 +53,18 @@ function PastAttemptsSection({
   );
 }
 
-type TakeQuizProps = { quiz: Quiz };
+type TakeQuizProps = {
+  quiz: Quiz;
+  /** When provided (e.g. from server), used as initial state and no fetch on mount. */
+  initialAttempts?: Attempt[];
+};
 
-export function TakeQuiz({ quiz }: TakeQuizProps) {
+export function TakeQuiz({ quiz, initialAttempts }: TakeQuizProps) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<(QuizResult & { attemptId?: number }) | null>(null);
-  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [attempts, setAttempts] = useState<Attempt[]>(initialAttempts ?? []);
 
   const fetchAttempts = useCallback(() => {
     fetch(`/api/quiz/${quiz.id}/attempts`)
@@ -70,8 +74,9 @@ export function TakeQuiz({ quiz }: TakeQuizProps) {
   }, [quiz.id]);
 
   useEffect(() => {
+    if (initialAttempts !== undefined) return;
     fetchAttempts();
-  }, [fetchAttempts]);
+  }, [fetchAttempts, initialAttempts]);
 
   function selectOption(questionId: string, optionId: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: [optionId] }));

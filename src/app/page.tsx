@@ -1,5 +1,14 @@
+import { Suspense } from "react";
 import { GenerateQuizForm } from "@/components/generate-quiz-form";
 import { PastQuizzesList } from "@/components/past-quizzes-list";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
@@ -12,7 +21,18 @@ export default function HomePage() {
       </div>
       <div className="space-y-8">
         <GenerateQuizForm />
-        <PastQuizzesList />
+        <Suspense
+          fallback={
+            <Card>
+              <CardHeader>
+                <CardTitle>Past quizzes</CardTitle>
+                <CardDescription>Loading…</CardDescription>
+              </CardHeader>
+            </Card>
+          }
+        >
+          <PastQuizzesList />
+        </Suspense>
       </div>
     </div>
   );

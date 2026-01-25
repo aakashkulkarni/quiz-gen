@@ -1,7 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { QuizService } from "@/services";
 import {
   Card,
   CardContent,
@@ -10,37 +8,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-type QuizSummary = {
-  id: string;
-  topic: string;
-  description?: string;
-  createdAt: string;
-};
-
-export function PastQuizzesList() {
-  const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/quizzes")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.quizzes) setQuizzes(d.quizzes);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Past quizzes</CardTitle>
-          <CardDescription>Loading…</CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+export async function PastQuizzesList() {
+  const quizService = new QuizService();
+  const quizzes = await quizService.listQuizzes();
 
   if (quizzes.length === 0) {
     return null;
@@ -69,7 +39,7 @@ export function PastQuizzesList() {
                   </p>
                 )}
                 <p className="mt-1 text-muted-foreground text-xs">
-                  {new Date(q.createdAt).toLocaleDateString()}
+                  {q.createdAt.toLocaleDateString()}
                 </p>
               </Link>
             </li>
