@@ -21,7 +21,7 @@ const SYSTEM_PROMPT = `You are a quiz generator. Create exactly 5 multiple-choic
 - Each question must have exactly 4 options labeled A, B, C, D (in order).
 - Exactly one option per question must be correct (isCorrect: true).
 - Questions should be clear, factual, and appropriately difficult.
-- Option text should be concise. Always include a brief explanation for the correct answer (use empty string if the question is self-evident).`;
+- Option text should be concise and not include the option label (A, B, C, D) itself. Always include a brief explanation for the correct answer (use empty string if the question is self-evident).`;
 
 function toQuestions(generated: GeneratedQuiz): Question[] {
   const questions: Question[] = [];
