@@ -17,7 +17,7 @@ export class QuizService {
   ): Promise<{
     quiz: Quiz & { createdAt: Date; updatedAt: Date };
   }> {
-    const { questions } = await this.ai.generateQuiz(topic);
+    const { questions } = await this.ai.generateQuiz(topic, description);
 
     const [quizRow] = await db
       .insert(quizzesTable)

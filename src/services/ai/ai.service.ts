@@ -59,7 +59,7 @@ export class AIService {
     this.maxRetries = options.maxRetries ?? 2;
   }
 
-  async generateQuiz(topic: string): Promise<GenerateQuizResult> {
+  async generateQuiz(topic: string, additionalContext?: string): Promise<GenerateQuizResult> {
     const { object, usage } = await generateObject({
       model: this.model,
       schema: generatedQuizSchema,
@@ -67,7 +67,7 @@ export class AIService {
       schemaDescription:
         "A quiz with 5 multiple-choice questions, each with 4 options (A-D) and one correct answer.",
       system: SYSTEM_PROMPT,
-      prompt: `Generate a quiz on this topic: ${topic}`,
+      prompt: `Generate a quiz on this topic: ${topic}${additionalContext ? `\n\nAdditional context: ${additionalContext}` : ""}`,
       maxRetries: this.maxRetries,
     });
 
