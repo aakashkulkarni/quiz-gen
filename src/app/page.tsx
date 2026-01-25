@@ -1,4 +1,5 @@
 import { GenerateQuizForm } from "@/components/generate-quiz-form";
+import { PastQuizzesList } from "@/components/past-quizzes-list";
 
 export default function HomePage() {
   return (
@@ -9,7 +10,10 @@ export default function HomePage() {
           Enter a topic and we&apos;ll generate a 5-question quiz for you.
         </p>
       </div>
-      <GenerateQuizForm />
+      <div className="space-y-8">
+        <GenerateQuizForm />
+        <PastQuizzesList />
+      </div>
     </div>
   );
 }

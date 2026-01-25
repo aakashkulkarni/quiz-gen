@@ -34,6 +34,7 @@ export interface SubmitQuizRequest {
 export interface SubmitQuizResponse {
   result: {
     quizId: string;
+    attemptId: number;
     score: number;
     totalQuestions: number;
     maxScore: number;

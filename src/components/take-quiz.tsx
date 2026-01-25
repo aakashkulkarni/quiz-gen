@@ -1,18 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Quiz, QuizResult } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AttemptResultView } from "@/components/attempt-result-view";
 import { cn } from "@/lib/utils";
+
+type Attempt = {
+  id: number;
+  completedAt: string;
+  correctCount: number;
+  totalQuestions: number;
+};
+
+function PastAttemptsSection({
+  quizId,
+  attempts,
+  className,
+}: {
+  quizId: string;
+  attempts: Attempt[];
+  className?: string;
+}) {
+  if (attempts.length === 0) return null;
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Past attempts</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-2">
+          {attempts.map((a) => (
+            <li key={a.id}>
+              <Link
+                href={`/quiz/${quizId}/attempts/${a.id}`}
+                className="block rounded-md border p-3 transition-colors hover:bg-accent/50"
+              >
+                <span className="font-medium">
+                  {a.correctCount}/{a.totalQuestions} correct
+                </span>
+                <p className="text-muted-foreground text-sm">
+                  {new Date(a.completedAt).toLocaleString()}
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
 
 type TakeQuizProps = { quiz: Quiz };
 
@@ -20,7 +59,19 @@ export function TakeQuiz({ quiz }: TakeQuizProps) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<QuizResult | null>(null);
+  const [result, setResult] = useState<(QuizResult & { attemptId?: number }) | null>(null);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
+
+  const fetchAttempts = useCallback(() => {
+    fetch(`/api/quiz/${quiz.id}/attempts`)
+      .then((r) => r.json())
+      .then((d) => d.attempts && setAttempts(d.attempts))
+      .catch(() => {});
+  }, [quiz.id]);
+
+  useEffect(() => {
+    fetchAttempts();
+  }, [fetchAttempts]);
 
   function selectOption(questionId: string, optionId: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: [optionId] }));
@@ -42,6 +93,7 @@ export function TakeQuiz({ quiz }: TakeQuizProps) {
         return;
       }
       setResult(data.result);
+      fetchAttempts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -51,45 +103,24 @@ export function TakeQuiz({ quiz }: TakeQuizProps) {
 
   if (result) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Quiz results</CardTitle>
-          <CardDescription>
-            You scored {result.score} out of {result.maxScore}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {result.questionResults.map((qr) => {
-            const q = result.questions.find((x) => x.id === qr.questionId)!;
-            return (
-              <div key={qr.questionId} className="space-y-2 rounded-lg border p-4">
-                <p className="font-medium">{q.questionText}</p>
-                <p
-                  className={cn(
-                    "text-sm",
-                    qr.isCorrect ? "text-green-600 dark:text-green-400" : "text-destructive"
-                  )}
-                >
-                  {qr.isCorrect ? "Correct" : "Incorrect"}
-                </p>
-                {qr.explanation && (
-                  <p className="text-muted-foreground text-sm">{qr.explanation}</p>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-        <CardFooter>
-          <Button asChild variant="outline">
-            <Link href="/">Create another quiz</Link>
-          </Button>
-        </CardFooter>
-      </Card>
+      <>
+        {attempts.length > 0 && (
+          <PastAttemptsSection quizId={quiz.id} attempts={attempts} className="mb-8" />
+        )}
+        <AttemptResultView
+          result={result}
+          quizId={quiz.id}
+          secondaryLink={{ label: "Create another quiz", href: "/" }}
+        />
+      </>
     );
   }
 
   return (
     <>
+      {attempts.length > 0 && (
+        <PastAttemptsSection quizId={quiz.id} attempts={attempts} className="mb-8" />
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">{quiz.topic}</h1>
         {quiz.description && (

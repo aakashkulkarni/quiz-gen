@@ -23,6 +23,7 @@ export async function POST(
     const response: SubmitQuizResponse = {
       result: {
         quizId: result.quizId,
+        attemptId: result.attemptId,
         score: result.score,
         totalQuestions: result.totalQuestions,
         maxScore: result.maxScore,

@@ -1,9 +1,11 @@
-import { eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/config/database";
 import {
   quizzesTable,
   quizQuestionsTable,
   questionOptionsTable,
+  quizAttemptsTable,
+  quizAttemptAnswersTable,
 } from "@/db/schema";
 import type { Quiz, QuizResult } from "@/types/quiz";
 import { AIService } from "./ai";
@@ -154,7 +156,7 @@ export class QuizService {
   async submitQuiz(
     quizId: string,
     answers: Record<string, string[]>
-  ): Promise<QuizResult> {
+  ): Promise<QuizResult & { attemptId: number }> {
     const quiz = await this.getQuiz(quizId);
     if (!quiz) throw new Error("Quiz not found");
 
@@ -181,6 +183,33 @@ export class QuizService {
       });
     }
 
+    const quizIdNum = parseInt(quizId, 10);
+    if (Number.isNaN(quizIdNum)) throw new Error("Invalid quiz id");
+
+    const attempt = await db.transaction(async (tx) => {
+      const [a] = await tx
+        .insert(quizAttemptsTable)
+        .values({
+          quizId: quizIdNum,
+          completedAt: new Date(),
+          correctCount: score,
+          totalQuestions: quiz.questions.length,
+        })
+        .returning();
+      if (!a) throw new Error("Failed to create attempt");
+      for (const qr of questionResults) {
+        await tx.insert(quizAttemptAnswersTable).values({
+          attemptId: a.id,
+          questionId: parseInt(qr.questionId, 10),
+          selectedOptionId: qr.selectedOptionIds[0]
+            ? parseInt(qr.selectedOptionIds[0], 10)
+            : null,
+          isCorrect: qr.isCorrect,
+        });
+      }
+      return a;
+    });
+
     return {
       quizId,
       score,
@@ -188,6 +217,102 @@ export class QuizService {
       maxScore: quiz.questions.length,
       questionResults,
       questions: quiz.questions,
+      attemptId: attempt.id,
+    };
+  }
+
+  async listQuizzes(): Promise<
+    Array<{ id: string; topic: string; description?: string; createdAt: Date }>
+  > {
+    const rows = await db
+      .select({
+        id: quizzesTable.id,
+        topic: quizzesTable.topic,
+        description: quizzesTable.description,
+        createdAt: quizzesTable.createdAt,
+      })
+      .from(quizzesTable)
+      .orderBy(desc(quizzesTable.createdAt));
+    return rows.map((r) => ({
+      id: String(r.id),
+      topic: r.topic,
+      description: r.description ?? undefined,
+      createdAt: r.createdAt,
+    }));
+  }
+
+  async getAttemptsForQuiz(quizId: string): Promise<
+    Array<{
+      id: number;
+      completedAt: Date;
+      correctCount: number;
+      totalQuestions: number;
+    }>
+  > {
+    const id = parseInt(quizId, 10);
+    if (Number.isNaN(id)) return [];
+    const rows = await db
+      .select({
+        id: quizAttemptsTable.id,
+        completedAt: quizAttemptsTable.completedAt,
+        correctCount: quizAttemptsTable.correctCount,
+        totalQuestions: quizAttemptsTable.totalQuestions,
+      })
+      .from(quizAttemptsTable)
+      .where(eq(quizAttemptsTable.quizId, id))
+      .orderBy(desc(quizAttemptsTable.completedAt));
+    return rows;
+  }
+
+  async getAttemptById(
+    quizId: string,
+    attemptId: string
+  ): Promise<(QuizResult & { attemptId: number }) | null> {
+    const qId = parseInt(quizId, 10);
+    const aId = parseInt(attemptId, 10);
+    if (Number.isNaN(qId) || Number.isNaN(aId)) return null;
+
+    const [attempt] = await db
+      .select()
+      .from(quizAttemptsTable)
+      .where(eq(quizAttemptsTable.id, aId));
+    if (!attempt || attempt.quizId !== qId) return null;
+
+    const quiz = await this.getQuiz(quizId);
+    if (!quiz) return null;
+
+    const answerRows = await db
+      .select()
+      .from(quizAttemptAnswersTable)
+      .where(eq(quizAttemptAnswersTable.attemptId, aId));
+
+    const answersByQ = new Map(
+      answerRows.map((a) => [a.questionId, a])
+    );
+
+    const questionResults: QuizResult["questionResults"] = quiz.questions.map(
+      (q) => {
+        const ans = answersByQ.get(parseInt(q.id, 10));
+        return {
+          questionId: q.id,
+          isCorrect: ans?.isCorrect ?? false,
+          selectedOptionIds: ans?.selectedOptionId
+            ? [String(ans.selectedOptionId)]
+            : [],
+          correctOptionIds: q.options.filter((o) => o.isCorrect).map((o) => o.id),
+          explanation: q.explanation,
+        };
+      }
+    );
+
+    return {
+      quizId,
+      score: attempt.correctCount,
+      totalQuestions: attempt.totalQuestions,
+      maxScore: attempt.totalQuestions,
+      questionResults,
+      questions: quiz.questions,
+      attemptId: attempt.id,
     };
   }
 }
