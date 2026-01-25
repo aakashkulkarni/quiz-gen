@@ -4,7 +4,7 @@ import { Home } from "lucide-react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI-Powered Knowledge Quiz Builder",
+  title: "Quiz Gen: AI-Powered Knowledge Quiz Builder",
   description: "Generate and take AI-powered quizzes on any topic",
 };
 
