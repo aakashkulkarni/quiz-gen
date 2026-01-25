@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { QuizResult } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,13 +20,28 @@ type AttemptResultViewProps = {
   quizId: string;
   /** e.g. { label: "Create another quiz", href: "/" } or { label: "Back to quiz", href: `/quiz/${id}` } */
   secondaryLink?: { label: string; href: string };
+  /** When provided, Retake runs this instead of navigating (e.g. when already on quiz page). No loading. */
+  onRetake?: () => void;
 };
 
 export function AttemptResultView({
   result,
   quizId,
   secondaryLink,
+  onRetake,
 }: AttemptResultViewProps) {
+  const router = useRouter();
+  const [retakeLoading, setRetakeLoading] = useState(false);
+
+  function handleRetake() {
+    if (onRetake) {
+      onRetake();
+      return;
+    }
+    setRetakeLoading(true);
+    router.push(`/quiz/${quizId}`);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -57,8 +74,12 @@ export function AttemptResultView({
         })}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
-        <Button asChild variant="outline">
-          <Link href={`/quiz/${quizId}`}>Retake</Link>
+        <Button
+          variant="outline"
+          onClick={handleRetake}
+          disabled={onRetake ? false : retakeLoading}
+        >
+          {!onRetake && retakeLoading ? "Loading…" : "Retake"}
         </Button>
         {secondaryLink && (
           <Button asChild variant="outline">

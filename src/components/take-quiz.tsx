@@ -111,6 +111,10 @@ export function TakeQuiz({ quiz }: TakeQuizProps) {
           result={result}
           quizId={quiz.id}
           secondaryLink={{ label: "Create another quiz", href: "/" }}
+          onRetake={() => {
+            setResult(null);
+            setAnswers({});
+          }}
         />
       </>
     );
