@@ -53,22 +53,44 @@ export function AttemptResultView({
       <CardContent className="space-y-6">
         {result.questionResults.map((qr) => {
           const q = result.questions.find((x) => x.id === qr.questionId)!;
+          const options = [...q.options].sort((a, b) => a.order - b.order);
           return (
-            <div key={qr.questionId} className="space-y-2 rounded-lg border p-4">
+            <div key={qr.questionId} className="space-y-3 rounded-lg border p-4">
               <p className="font-medium">{q.questionText}</p>
-              <p
-                className={cn(
-                  "text-sm",
-                  qr.isCorrect
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-destructive"
-                )}
-              >
-                {qr.isCorrect ? "Correct" : "Incorrect"}
-              </p>
-              {qr.explanation && (
-                <p className="text-muted-foreground text-sm">{qr.explanation}</p>
-              )}
+              <div className="space-y-2">
+                {options.map((opt) => {
+                  const isCorrect = opt.isCorrect;
+                  const isSelected = qr.selectedOptionIds.includes(opt.id);
+                  const isWrongChoice = isSelected && !isCorrect;
+                  return (
+                    <div
+                      key={opt.id}
+                      className={cn(
+                        "rounded-md border p-3 text-sm",
+                        isCorrect &&
+                          "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/40",
+                        isWrongChoice &&
+                          "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30"
+                      )}
+                    >
+                      <span className="font-medium text-muted-foreground">
+                        {opt.optionLabel}.{" "}
+                      </span>
+                      <span>{opt.optionText}</span>
+                      {isSelected && (
+                        <span className="ml-2 text-muted-foreground">
+                          (Your choice)
+                        </span>
+                      )}
+                      {isCorrect && qr.explanation && (
+                        <p className="mt-2 border-t border-green-200 pt-2 text-muted-foreground dark:border-green-800/50">
+                          {qr.explanation}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
