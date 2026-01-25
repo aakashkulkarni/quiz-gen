@@ -1,6 +1,4 @@
-# Quiz Gen 2 — Next.js
-
-AI-powered quiz builder built with **Next.js 15** (App Router, React Server Components), **Drizzle**, **PostgreSQL**, **Vercel AI SDK**, and **shadcn/ui**.
+# Quiz Gen: AI-powered quiz builder.
 
 ## Summary
 
